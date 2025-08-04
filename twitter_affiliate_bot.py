@@ -1,77 +1,108 @@
 import os
 import tweepy
-import openai
 import random
 import time
+from openai import OpenAI
 
-# Authenticate with Twitter
-auth = tweepy.OAuth1UserHandler(
-    os.getenv("API_KEY"),
-    os.getenv("API_SECRET"),
-    os.getenv("ACCESS_TOKEN"),
-    os.getenv("ACCESS_TOKEN_SECRET")
+# Load environment variables
+TWITTER_BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+TWITTER_API_KEY = os.getenv("API_KEY")
+TWITTER_API_SECRET = os.getenv("API_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+TWITTER_ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Authenticate with Twitter API v2
+client_v2 = tweepy.Client(
+    bearer_token=TWITTER_BEARER_TOKEN,
+    consumer_key=TWITTER_API_KEY,
+    consumer_secret=TWITTER_API_SECRET,
+    access_token=TWITTER_ACCESS_TOKEN,
+    access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+    wait_on_rate_limit=True
 )
-api = tweepy.API(auth)
 
 # Authenticate with OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Expanded list of keywords
-all_keywords = [
+# Expanded list of keywords to monitor
+keywords = [
     "looking for a plumber", "need an electrician", "recommend a roofer",
     "builder for extension", "find gardener", "hire handyman", "any good tilers",
     "window cleaner in", "fence repair needed", "local tradesperson needed",
-    "need a decorator", "recommend a tradesperson", "cheap handyman near me",
-    "recommend a builder", "need garden help", "kitchen fitter recommendation",
-    "bathroom installer", "urgent roofer needed", "local electrician wanted",
-    "fence panel repair", "reliable joiner", "need someone to paint", "door won’t close",
-    "recommend someone for tiling", "garage conversion help", "new driveway quote",
-    "electrician for EV charger", "boiler service near me", "window repair person",
-    "loft boarding service", "install laminate flooring", "shed base installer",
-    "dripping tap repair", "mould on walls help", "decking installation help"
+    "need a decorator", "install a bathroom", "kitchen fitter recommendations",
+    "cheap driveway quotes", "trusted local builder", "EV charger install",
+    "loft conversion quote", "find plasterer", "house clearance help",
+    "reliable removal company", "flat roof repair", "man with a van needed",
+    "recommend a joiner", "painter near me", "window replacement quote",
+    "shed base installation", "soffit repair", "recommend gardener",
+    "install laminate flooring", "home insulation installer"
 ]
 
-# Select a random subset to use this run
-keywords_to_use = random.sample(all_keywords, 5)
+# Promo replies to rotate for variation
+promo_replies = [
+    "\n\nStuck finding someone reliable? This compares local trades quickly: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
+    "\n\nThis saved me some serious hassle. Compare local trades free: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
+    "\n\nTry this tool it shows local tradespeople and compares prices: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
+    "\n\nNot sure who to trust? This finds reviewed local pros fast: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
+    "\n\nI always recommend this — it quickly shows top local trades: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x"
+]
 
-# Promotional message to append to replies
-promo_reply = "\n\nIf you're stuck, try this — it finds and compares local tradespeople quickly: https://www.localjobquotes.co.uk"
+# Store replied tweet IDs
+replied_ids = set()
 
-def generate_reply(tweet_text, promo):
+# Main reply function
+def generate_reply(tweet_text):
     try:
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful and friendly assistant replying to someone looking for a tradesperson. Keep your tone casual, short, and don't use em dashes."},
-                {"role": "user", "content": f"Reply to this tweet in a friendly, helpful tone:\n\n'{tweet_text}'"}
+                {
+                    "role": "system",
+                    "content": (
+                        "You're replying to someone who just asked for help with a tradesperson. "
+                        "Keep it friendly and helpful. Suggest checking out a site that compares local tradespeople. "
+                        "Don't use hashtags, emojis, or em dashes. Don't sound like an ad. Keep the tone natural."
+                    )
+                },
+                {"role": "user", "content": tweet_text}
             ],
-            temperature=0.7,
-            max_tokens=100
+            temperature=0.7
         )
         reply = response.choices[0].message.content.strip()
-        return reply + " " + promo
+        promo = random.choice(promo_replies)
+        return reply + promo
     except Exception as e:
         print(f"Error generating reply: {e}")
         return None
 
+# Search and reply
 def search_and_reply():
-    for keyword in keywords_to_use:
+    for keyword in keywords:
         try:
-            tweets = api.search_tweets(q=keyword, lang="en", count=5, result_type="recent")
-            for tweet in tweets:
-                if not tweet.user.following:
-                    reply_text = generate_reply(tweet.text, promo=promo_reply)
-                    if reply_text:
-                        print(f"Replying to @{tweet.user.screen_name}: {reply_text}")
-                        api.update_status(
-                            status=f"@{tweet.user.screen_name} {reply_text}",
-                            in_reply_to_status_id=tweet.id
+            print(f"Searching for: {keyword}")
+            search_results = client_v2.search_recent_tweets(query=keyword, max_results=10)
+            if not search_results.data:
+                continue
+            for tweet in search_results.data:
+                if tweet.id in replied_ids or tweet.author_id is None:
+                    continue
+                print(f"Replying to tweet ID: {tweet.id}")
+                reply_text = generate_reply(tweet.text)
+                if reply_text:
+                    try:
+                        client_v2.create_tweet(
+                            text=reply_text,
+                            in_reply_to_tweet_id=tweet.id
                         )
-                        time.sleep(5)
+                        print(f"✅ Replied to tweet {tweet.id}")
+                        replied_ids.add(tweet.id)
+                        time.sleep(10)
+                    except Exception as e:
+                        print(f"Error replying to tweet {tweet.id}: {e}")
         except Exception as e:
             print(f"Error while processing keyword '{keyword}': {e}")
-            continue
+        time.sleep(5)
 
-# Run bot
 if __name__ == "__main__":
     search_and_reply()
