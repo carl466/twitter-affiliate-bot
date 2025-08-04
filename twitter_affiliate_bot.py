@@ -1,78 +1,77 @@
-
 import os
 import tweepy
 import openai
 import random
 import time
 
-# Load environment variables
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
-BEARER_TOKEN = os.getenv("BEARER_TOKEN")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Authenticate with Twitter v2
-client = tweepy.Client(
-    bearer_token=BEARER_TOKEN,
-    consumer_key=API_KEY,
-    consumer_secret=API_SECRET,
-    access_token=ACCESS_TOKEN,
-    access_token_secret=ACCESS_TOKEN_SECRET
+# Authenticate with Twitter
+auth = tweepy.OAuth1UserHandler(
+    os.getenv("API_KEY"),
+    os.getenv("API_SECRET"),
+    os.getenv("ACCESS_TOKEN"),
+    os.getenv("ACCESS_TOKEN_SECRET")
 )
+api = tweepy.API(auth)
 
-# Set OpenAI key
-openai.api_key = OPENAI_API_KEY
+# Authenticate with OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Keywords to search for
-keywords = [
+# Expanded list of keywords
+all_keywords = [
     "looking for a plumber", "need an electrician", "recommend a roofer",
     "builder for extension", "find gardener", "hire handyman", "any good tilers",
-    "window cleaner in", "fence repair needed", "local tradesperson needed"
+    "window cleaner in", "fence repair needed", "local tradesperson needed",
+    "need a decorator", "recommend a tradesperson", "cheap handyman near me",
+    "recommend a builder", "need garden help", "kitchen fitter recommendation",
+    "bathroom installer", "urgent roofer needed", "local electrician wanted",
+    "fence panel repair", "reliable joiner", "need someone to paint", "door won’t close",
+    "recommend someone for tiling", "garage conversion help", "new driveway quote",
+    "electrician for EV charger", "boiler service near me", "window repair person",
+    "loft boarding service", "install laminate flooring", "shed base installer",
+    "dripping tap repair", "mould on walls help", "decking installation help"
 ]
 
-# Promotional reply chance: 10–30%
-PROMO_LINK = "https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ"
+# Select a random subset to use this run
+keywords_to_use = random.sample(all_keywords, 5)
 
-def generate_reply(tweet_text, promo=False):
-    instruction = "Reply like a helpful UK homeowner giving friendly advice. Avoid sounding like a bot or ad. No em dashes."
-    if promo:
-        instruction += f" You can optionally recommend this site: {PROMO_LINK}."
+# Promotional message to append to replies
+promo_reply = "\n\nIf you're stuck, try this — it finds and compares local tradespeople quickly: https://www.localjobquotes.co.uk"
 
-    response = openai.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": instruction},
-            {"role": "user", "content": tweet_text}
-        ],
-        temperature=0.8
-    )
-    return response.choices[0].message.content.strip()
+def generate_reply(tweet_text, promo):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful and friendly assistant replying to someone looking for a tradesperson. Keep your tone casual, short, and don't use em dashes."},
+                {"role": "user", "content": f"Reply to this tweet in a friendly, helpful tone:\n\n'{tweet_text}'"}
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+        reply = response.choices[0].message.content.strip()
+        return reply + " " + promo
+    except Exception as e:
+        print(f"Error generating reply: {e}")
+        return None
 
 def search_and_reply():
-    for keyword in keywords:
+    for keyword in keywords_to_use:
         try:
-            results = client.search_recent_tweets(query=keyword, max_results=10)
-            tweets = results.data if results.data else []
-
+            tweets = api.search_tweets(q=keyword, lang="en", count=5, result_type="recent")
             for tweet in tweets:
-                if tweet.text.startswith("RT") or tweet.author_id == client.get_me().data.id:
-                    continue
-
-                promo_reply = random.random() < random.uniform(0.1, 0.3)
-                reply_text = generate_reply(tweet.text, promo=promo_reply)
-
-                client.create_tweet(in_reply_to_tweet_id=tweet.id, text=reply_text)
-                print(f"Replied to: {tweet.id} | Promo: {promo_reply}")
-
-                time.sleep(random.randint(20, 60))  # Avoid spam rate limits
-
+                if not tweet.user.following:
+                    reply_text = generate_reply(tweet.text, promo=promo_reply)
+                    if reply_text:
+                        print(f"Replying to @{tweet.user.screen_name}: {reply_text}")
+                        api.update_status(
+                            status=f"@{tweet.user.screen_name} {reply_text}",
+                            in_reply_to_status_id=tweet.id
+                        )
+                        time.sleep(5)
         except Exception as e:
             print(f"Error while processing keyword '{keyword}': {e}")
             continue
 
+# Run bot
 if __name__ == "__main__":
-    while True:
-        search_and_reply()
-        time.sleep(1800)  # Run every 30 minutes
+    search_and_reply()
