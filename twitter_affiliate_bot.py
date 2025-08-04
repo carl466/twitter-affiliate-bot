@@ -55,7 +55,7 @@ replied_ids = set()
 def generate_reply(tweet_text):
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "system",
