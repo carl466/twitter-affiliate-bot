@@ -1,2 +1,2 @@
 [build]
-start = "./start.sh"
+start = "python twitter_affiliate_bot.py"
