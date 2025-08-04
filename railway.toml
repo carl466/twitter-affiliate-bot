@@ -1,6 +1,2 @@
 [build]
-builder = "NIXPACKS"
-
-[start]
-cmd = "python twitter_affiliate_bot.py"
-
+start = "./start.sh"
