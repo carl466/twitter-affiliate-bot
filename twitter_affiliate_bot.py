@@ -41,7 +41,7 @@ def generate_reply(tweet_text, promo=False):
         instruction += f" You can optionally recommend this site: {PROMO_LINK}."
 
     response = openai.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": instruction},
             {"role": "user", "content": tweet_text}
