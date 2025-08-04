@@ -1,2 +1,6 @@
 [build]
-start = "./start.sh"
+builder = "NIXPACKS"
+
+[start]
+cmd = "python main.py"
+
