@@ -28,10 +28,10 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Focused search terms (4 trades × 2 variants)
 keywords = [
-    "recommend a handyman", "recommend handymen",
-    "recommend a removal company", "recommend removal companies",
-    "recommend a roofer", "recommend roofers",
-    "recommend a builder", "recommend builders"
+    '"recommend a handyman" OR "recommend handymen" OR "need a handyman" OR "looking for a handyman" OR "any good handymen" OR "find a handyman"',
+    '"recommend a removal company" OR "recommend removal companies" OR "need a removal company" OR "looking for a removal company" OR "removal firm near me" OR "moving house help"',
+    '"recommend a roofer" OR "recommend roofers" OR "need a roofer" OR "looking for roofer" OR "fix my roof" OR "roof repair"',
+    '"recommend a builder" OR "recommend builders" OR "need a builder" OR "looking for builder" OR "builder for extension" OR "trusted builder"'
 ]
 
 # Rotating promo replies
