@@ -71,8 +71,11 @@ def generate_reply(tweet_text):
         print(f"[{datetime.now().isoformat()}] ❌ Error generating reply: {e}")
         return None
 
-# Search and reply function
+# Search and reply function with detailed logging
 def search_and_reply():
+    total_matches = 0
+    total_replies = 0
+
     for keyword in keywords:
         try:
             print(f"[{datetime.now().isoformat()}] 🔍 Searching for: {keyword}")
@@ -82,7 +85,12 @@ def search_and_reply():
             for tweet in search_results.data:
                 if tweet.id in replied_ids or tweet.author_id is None:
                     continue
-                print(f"[{datetime.now().isoformat()}] 💬 Found tweet ID: {tweet.id}")
+                total_matches += 1
+
+                print(f"\n[{datetime.now().isoformat()}] 🧠 Match Found:")
+                print(f"  Text: {tweet.text}")
+                print(f"  Link: https://twitter.com/i/web/status/{tweet.id}")
+
                 reply_text = generate_reply(tweet.text)
                 if reply_text:
                     try:
@@ -90,14 +98,19 @@ def search_and_reply():
                             text=reply_text,
                             in_reply_to_tweet_id=tweet.id
                         )
-                        print(f"[{datetime.now().isoformat()}] ✅ Replied to tweet {tweet.id}")
+                        print(f"[{datetime.now().isoformat()}] ✅ Replied to tweet {tweet.id}\n")
                         replied_ids.add(tweet.id)
+                        total_replies += 1
                         time.sleep(10)  # pause between replies
                     except Exception as e:
                         print(f"[{datetime.now().isoformat()}] ❌ Error replying to tweet {tweet.id}: {e}")
         except Exception as e:
             print(f"[{datetime.now().isoformat()}] ❌ Error while processing keyword '{keyword}': {e}")
         time.sleep(5)
+
+    print(f"\n[{datetime.now().isoformat()}] 📊 Search Cycle Summary:")
+    print(f"  Total matches found: {total_matches}")
+    print(f"  Total replies sent:  {total_replies}\n")
 
 # Main loop: run every 90 minutes
 if __name__ == "__main__":
