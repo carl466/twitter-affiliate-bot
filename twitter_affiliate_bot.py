@@ -26,15 +26,28 @@ client_v2 = tweepy.Client(
 # Authenticate with OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Focused search terms (4 trades × 2 variants)
+# Full list of grouped trade-related keyword queries
 keywords = [
+    # Handyman
     '"recommend a handyman" OR "recommend handymen" OR "need a handyman" OR "looking for a handyman" OR "any good handymen" OR "find a handyman"',
+
+    # Removal
     '"recommend a removal company" OR "recommend removal companies" OR "need a removal company" OR "looking for a removal company" OR "removal firm near me" OR "moving house help"',
+
+    # Roofer
     '"recommend a roofer" OR "recommend roofers" OR "need a roofer" OR "looking for roofer" OR "fix my roof" OR "roof repair"',
-    '"recommend a builder" OR "recommend builders" OR "need a builder" OR "looking for builder" OR "builder for extension" OR "trusted builder"'
+
+    # Builder
+    '"recommend a builder" OR "recommend builders" OR "need a builder" OR "looking for builder" OR "builder for extension" OR "trusted builder"',
+
+    # Plumber
+    '"recommend a plumber" OR "recommend plumbers" OR "need a plumber" OR "looking for a plumber" OR "any good plumbers" OR "plumber near me"',
+
+    # Decorator
+    '"recommend a decorator" OR "recommend decorators" OR "need a decorator" OR "looking for decorator" OR "painter and decorator" OR "decorator near me"'
 ]
 
-# Rotating promo replies
+# Promo replies to rotate
 promo_replies = [
     "\n\nStuck finding someone reliable? This compares local trades quickly: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
     "\n\nThis saved me some serious hassle. Compare local trades free: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
@@ -43,10 +56,10 @@ promo_replies = [
     "\n\nI always recommend this — it quickly shows top local trades: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x"
 ]
 
-# Store replied tweet IDs
+# Track replied tweet IDs
 replied_ids = set()
 
-# Generate a reply using OpenAI
+# Create a natural response + optional promo
 def generate_reply(tweet_text):
     try:
         response = openai_client.chat.completions.create(
@@ -65,18 +78,24 @@ def generate_reply(tweet_text):
             temperature=0.7
         )
         reply = response.choices[0].message.content.strip()
-        promo = random.choice(promo_replies)
-        return reply + promo
+
+        # Add promo 60% of the time
+        if random.random() < 0.6:
+            reply += random.choice(promo_replies)
+
+        return reply
     except Exception as e:
         print(f"[{datetime.now().isoformat()}] ❌ Error generating reply: {e}")
         return None
 
-# Search and reply function with detailed logging
+# Search and reply function using random 4-keyword sample
 def search_and_reply():
     total_matches = 0
     total_replies = 0
 
-    for keyword in keywords:
+    search_set = random.sample(keywords, 4)
+
+    for keyword in search_set:
         try:
             print(f"[{datetime.now().isoformat()}] 🔍 Searching for: {keyword}")
             search_results = client_v2.search_recent_tweets(query=keyword, max_results=10)
@@ -101,7 +120,7 @@ def search_and_reply():
                         print(f"[{datetime.now().isoformat()}] ✅ Replied to tweet {tweet.id}\n")
                         replied_ids.add(tweet.id)
                         total_replies += 1
-                        time.sleep(10)  # pause between replies
+                        time.sleep(10)
                     except Exception as e:
                         print(f"[{datetime.now().isoformat()}] ❌ Error replying to tweet {tweet.id}: {e}")
         except Exception as e:
@@ -112,10 +131,10 @@ def search_and_reply():
     print(f"  Total matches found: {total_matches}")
     print(f"  Total replies sent:  {total_replies}\n")
 
-# Main loop: run every 90 minutes
+# Run every 60 minutes
 if __name__ == "__main__":
     while True:
         print(f"\n[{datetime.now().isoformat()}] 🔁 Starting new search cycle...\n")
         search_and_reply()
-        print(f"\n[{datetime.now().isoformat()}] ⏳ Sleeping for 90 minutes...\n")
-        time.sleep(5400)  # 90 minutes
+        print(f"\n[{datetime.now().isoformat()}] ⏳ Sleeping for 60 minutes...\n")
+        time.sleep(3600)
