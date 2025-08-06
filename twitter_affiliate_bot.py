@@ -2,6 +2,7 @@ import os
 import tweepy
 import random
 import time
+from datetime import datetime
 from openai import OpenAI
 
 # Load environment variables
@@ -25,7 +26,7 @@ client_v2 = tweepy.Client(
 # Authenticate with OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Expanded list of keywords to monitor
+# Search terms
 keywords = [
     "looking for a plumber", "need an electrician", "recommend a roofer",
     "builder for extension", "find gardener", "hire handyman", "any good tilers",
@@ -39,7 +40,7 @@ keywords = [
     "install laminate flooring", "home insulation installer"
 ]
 
-# Promo replies to rotate for variation
+# Rotating promo replies
 promo_replies = [
     "\n\nStuck finding someone reliable? This compares local trades quickly: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
     "\n\nThis saved me some serious hassle. Compare local trades free: https://www.myjobquote.co.uk/quote?click=UFUZATT7BXJ&clickref=x",
@@ -51,7 +52,7 @@ promo_replies = [
 # Store replied tweet IDs
 replied_ids = set()
 
-# Main reply function
+# Generate a reply using OpenAI
 def generate_reply(tweet_text):
     try:
         response = openai_client.chat.completions.create(
@@ -73,21 +74,21 @@ def generate_reply(tweet_text):
         promo = random.choice(promo_replies)
         return reply + promo
     except Exception as e:
-        print(f"Error generating reply: {e}")
+        print(f"[{datetime.now().isoformat()}] ❌ Error generating reply: {e}")
         return None
 
-# Search and reply
+# Search and reply function
 def search_and_reply():
     for keyword in keywords:
         try:
-            print(f"Searching for: {keyword}")
+            print(f"[{datetime.now().isoformat()}] 🔍 Searching for: {keyword}")
             search_results = client_v2.search_recent_tweets(query=keyword, max_results=10)
             if not search_results.data:
                 continue
             for tweet in search_results.data:
                 if tweet.id in replied_ids or tweet.author_id is None:
                     continue
-                print(f"Replying to tweet ID: {tweet.id}")
+                print(f"[{datetime.now().isoformat()}] 💬 Found tweet ID: {tweet.id}")
                 reply_text = generate_reply(tweet.text)
                 if reply_text:
                     try:
@@ -95,14 +96,19 @@ def search_and_reply():
                             text=reply_text,
                             in_reply_to_tweet_id=tweet.id
                         )
-                        print(f"✅ Replied to tweet {tweet.id}")
+                        print(f"[{datetime.now().isoformat()}] ✅ Replied to tweet {tweet.id}")
                         replied_ids.add(tweet.id)
-                        time.sleep(10)
+                        time.sleep(10)  # pause between replies
                     except Exception as e:
-                        print(f"Error replying to tweet {tweet.id}: {e}")
+                        print(f"[{datetime.now().isoformat()}] ❌ Error replying to tweet {tweet.id}: {e}")
         except Exception as e:
-            print(f"Error while processing keyword '{keyword}': {e}")
+            print(f"[{datetime.now().isoformat()}] ❌ Error while processing keyword '{keyword}': {e}")
         time.sleep(5)
 
+# Main loop
 if __name__ == "__main__":
-    search_and_reply()
+    while True:
+        print(f"\n[{datetime.now().isoformat()}] 🔁 Starting new search cycle...\n")
+        search_and_reply()
+        print(f"\n[{datetime.now().isoformat()}] ⏳ Sleeping for 5 minutes...\n")
+        time.sleep(300)
