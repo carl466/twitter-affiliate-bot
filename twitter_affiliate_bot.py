@@ -76,7 +76,7 @@ def search_and_reply():
     for keyword in keywords:
         try:
             print(f"[{datetime.now().isoformat()}] 🔍 Searching for: {keyword}")
-            search_results = client_v2.search_recent_tweets(query=keyword, max_results=2)
+            search_results = client_v2.search_recent_tweets(query=keyword, max_results=10)
             if not search_results.data:
                 continue
             for tweet in search_results.data:
