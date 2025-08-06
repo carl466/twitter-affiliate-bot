@@ -26,18 +26,12 @@ client_v2 = tweepy.Client(
 # Authenticate with OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Search terms
+# Focused search terms (4 trades × 2 variants)
 keywords = [
-    "looking for a plumber", "need an electrician", "recommend a roofer",
-    "builder for extension", "find gardener", "hire handyman", "any good tilers",
-    "window cleaner in", "fence repair needed", "local tradesperson needed",
-    "need a decorator", "install a bathroom", "kitchen fitter recommendations",
-    "cheap driveway quotes", "trusted local builder", "EV charger install",
-    "loft conversion quote", "find plasterer", "house clearance help",
-    "reliable removal company", "flat roof repair", "man with a van needed",
-    "recommend a joiner", "painter near me", "window replacement quote",
-    "shed base installation", "soffit repair", "recommend gardener",
-    "install laminate flooring", "home insulation installer"
+    "recommend a handyman", "recommend handymen",
+    "recommend a removal company", "recommend removal companies",
+    "recommend a roofer", "recommend roofers",
+    "recommend a builder", "recommend builders"
 ]
 
 # Rotating promo replies
@@ -82,7 +76,7 @@ def search_and_reply():
     for keyword in keywords:
         try:
             print(f"[{datetime.now().isoformat()}] 🔍 Searching for: {keyword}")
-            search_results = client_v2.search_recent_tweets(query=keyword, max_results=10)
+            search_results = client_v2.search_recent_tweets(query=keyword, max_results=2)
             if not search_results.data:
                 continue
             for tweet in search_results.data:
@@ -105,10 +99,10 @@ def search_and_reply():
             print(f"[{datetime.now().isoformat()}] ❌ Error while processing keyword '{keyword}': {e}")
         time.sleep(5)
 
-# Main loop
+# Main loop: run every 90 minutes
 if __name__ == "__main__":
     while True:
         print(f"\n[{datetime.now().isoformat()}] 🔁 Starting new search cycle...\n")
         search_and_reply()
-        print(f"\n[{datetime.now().isoformat()}] ⏳ Sleeping for 5 minutes...\n")
-        time.sleep(300)
+        print(f"\n[{datetime.now().isoformat()}] ⏳ Sleeping for 90 minutes...\n")
+        time.sleep(5400)  # 90 minutes
